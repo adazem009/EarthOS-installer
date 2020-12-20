@@ -87,6 +87,59 @@ define/"page3"
 		print/\n,"Press ENTER to continue...",\n
 	endwarp
 }
+define/"page4"
+{
+	warp
+		// Page 4
+		// Disk menu
+		clear
+		print/"Choose the disk (press enter), which should be used for the installation.",\n,"Press C to create a virtual disk.",\n,"Press R to remove selected disk.",\n
+		set/"i",0
+		getlistlength/"DISKS"/"len"
+		repeat/len
+			calc/"i=i+1"
+			if/[selected == i]
+				print/"[*] "
+			else
+				print/"[ ] "
+			endif
+			getitem/"DISKS",i/"DISK"
+			print/DISK,\n
+		endloop
+	endwarp
+}
+define/"page5"
+{
+	warp
+		// Page 5
+		// Disk menu
+		clear
+		print/"Mount a partition on /",\n,"R - mount selected partition at / (root)",\n,"B - to mount selected partition at /boot",\n,"C - mount selected partition at custom path",\n,"Esc - remove mount point of selected partition",\n,"N - create a partition",\n,"D - delete selected partition",\n
+		set/"i",0
+		getlistlength/"PARTS"/"len"
+		repeat/len
+			calc/"i=i+1"
+			if/[selected == i]
+				print/"[*] "
+			else
+				print/"[ ] "
+			endif
+			getitem/"PARTS",i/"PART"
+			getitem/"mountpoints",i/"mountpoint"
+			print/PART
+			if/[mountpoint != ""]
+				print/" - mounted at ",mountpoint
+			endif
+			if/[mountpoint == "/"]
+				set/"root",1
+			endif
+			print/\n
+		endloop
+		if/[root == 1]
+			print/\n,"Press ENTER to continue...",\n
+		endif
+	endwarp
+}
 // Short boot animation
 clear
 set/"bg","000255000"/"g",255/"b",0
@@ -114,7 +167,7 @@ repeat/75
 		set/"bg","000",gc,bc
 		bgcolor/bg
 	endwarp
-	wait/0.0075
+	//wait/0.0075
 endloop
 set/"i",0
 repeat/10
@@ -210,7 +263,214 @@ while/![key == "enter"]
 	endif
 	page3
 endloop
+// Disk partitioning
+clear
 print/"Collecting disk info, please wait...",\n
-while/![key == "c"]
-	// partitioning, coming soon
+listdisk/"DISKS"
+wait/0.5
+// Disk selection
+set/"key",""/"selected",1
+while/[key != "enter"]
+	warp
+		getlistlength/"DISKS"/"len"
+		getkey/"keys"
+		getitem/"keys",1/"key"
+		if/[key == "down arrow"]
+			if/[selected < len]
+				calc/"selected=selected+1"
+			endif
+		elseif/[key == "up arrow"]
+			if/[selected > 1]
+				calc/"selected=selected-1"
+			endif
+		endif
+	endwarp
+	if/[key == "c"]
+		set/"selected",1
+		clear
+		print/"Creating new disk.",\n
+		read/"Disk name: ","diskname"
+		// Check if the disk name doesn't contain reserved characters
+		set/"invalid",0
+		getlength/diskname/"dnl"
+		set/"i",0
+		repeat/dnl
+			calc/"i=i+1"
+			getletter/diskname,i/"dnlet"
+			if/[dnlet == ";"] or [dnlet == "+"] or [dnlet == "/"]
+				set/"invalid",1
+			endif
+		endloop
+		if/[invalid == 1]
+			print/"Invalid disk name!",\n
+			wait/2
+		else
+			read/"Size in bytes: ","disksize"
+			// Disk size limits (from 1KB to 16GB)
+			// Feel free to change this if you have more than 16GB of RAM. SMC Computer will most likely lag if the size is greater than 20KB.
+			// TurboWarp recommended!
+			if/[disksize < 1024] or [disksize > 17179869184]
+				print/"Invalid disk size!",\n
+				wait/2
+			else
+				createdisk/diskname,disksize
+				set/"ans",""
+				while/[ans != "Y"] and [ans != "y"] and [ans != "N"] and [ans != "n"]
+					read/"Do you want this disk to be bootable (required for EarthOS)? (Y/N)","ans"
+				endloop
+				if/[ans == "Y"] or [ans == "y"]
+					set/"diskbootable",1
+				else
+					set/"diskbootable",0
+				endif
+				print/"Formatting the disk with FPT...",\n
+				fpt/diskname,diskbootable
+				listdisk/"DISKS"
+				print/"Done!"
+				wait/0.5
+			endif
+			clear
+		endif
+	elseif/[key == "r"]
+		set/"ans",""/"selected",1
+		while/[ans != "Y"] and [ans != "y"] and [ans != "N"] and [ans != "n"]
+			read/"Are you sure you want to remove this virtual disk? You'll loose all the data on it! (Y/N)","ans"
+		endloop
+		if/[ans == "Y"] or [ans == "y"]
+			print/"Removing disk...",\n
+			getitem/"DISKS",selected/"diskname"
+			rmdisk/diskname
+			listdisk/"DISKS"
+			print/"Done!"
+			wait/0.5
+			clear
+		endif
+	endif
+	page4
 endloop
+set/"install_disk",selected
+clear
+print/"Searching for partitions, please wait...",\n
+listdisk/"DISKS"
+getitem/"DISKS",install_disk/"diskname"
+print/"Selected disk: ",diskname,\n,"ID: ",install_disk,\n
+seldisk/diskname
+listpart/"PARTS"
+getlistlength/"PARTS"/"len"
+print/"Number of partitions: ",len,\n
+if/[len == 0]
+	print/"This disk is empty! It has to be formatted with FPT so we can make sure it's not corrupted.",\n
+	print/"Answering no (N) will abort the installation.",\n
+	set/"ans",""
+	while/[ans != "Y"] and [ans != "y"] and [ans != "N"] and [ans != "n"]
+		read/"Do you want to format this disk? You'll loose all the data on it! (Y/N)","ans"
+	endloop
+	if/[ans == "Y"] or [ans == "y"]
+		print/"Formatting...",\n
+		getitem/"DISKS",install_disk/"diskname"
+		getdisksize/install_disk/"disksize"
+		fpt/diskname,disksize
+		print/"Done!",\n
+	else
+		exit
+	endif
+endif
+set/"ans",""
+while/[ans != "y"] and [ans != "y"] and [ans != "N"] and [ans != "n"]
+	read/"Do you want the installer to do everything for you? You'll loose all the data on this disk! (Y/N)","ans"
+endloop
+if/[ans == "Y"] or [ans == "y"]
+	continue/"autoinstall.smc"
+	exit
+endif
+// Partition selection
+wait/0.5
+setlist/"mountpoints"
+getlength/"PARTS"/"len"
+set/"i",0
+repeat/len
+	calc/"i=i+1"
+	append/""/"mountpoints"
+endloop
+set/"key",""/"selected",1/"root",0
+while/[key != "enter"] or [root == 0]
+	warp
+		getkey/"keys"
+		getitem/"keys",1/"key"
+		getlength/"PARTS"/"len"
+		if/[key == "down arrow"]
+			if/[selected < len]
+				calc/"selected=selected+1"
+			endif
+		elseif/[key == "up arrow"]
+			if/[selected > 1]
+				calc/"selected=selected-1"
+			endif
+		endif
+	endwarp
+	if/[key == "r"]
+		clear
+		wait/2
+		getlength/"PARTS"/"len"
+		set/"i",0
+		repeat/len
+			calc/"i=i+1"
+			getitem/"mountpoints",i/"mountpoint"
+			if/[mountpoint == "/"]
+				replace/i,""/"mountpoints"
+			endif
+		endloop
+		replace/selected,"/"/"mountpoints"
+	endif
+	if/[key == "b"]
+		clear
+		wait/2
+		getlength/"PARTS"/"len"
+		set/"i",0
+		repeat/len
+			calc/"i=i+1"
+			getitem/"mountpoints",i/"mountpoint"
+			if/[mountpoint == "/boot"]
+				replace/i,""/"mountpoints"
+			endif
+		endloop
+		replace/selected,"/boot"/"mountpoints"
+	endif
+	if/[key == "esc"]
+		clear
+		wait/2
+		replace/selected,""/"mountpoints"
+	endif
+	if/[key == "c"]
+		read/"Mount point: ","point"
+		getlength/"PARTS"/"len"
+		set/"i",0
+		repeat/len
+			calc/"i=i+1"
+			getitem/"mountpoints",i/"mountpoint"
+			if/[mountpoint == point]
+				replace/i,""/"mountpoints"
+			endif
+		endloop
+		replace/selected,point/"mountpoints"
+		set/"selected",1
+	endif
+	if/[key == "n"]
+		read/"Partition label: ","partname"/"Partition size (in bytes): ","partsize"
+		createpart/partname,partsize
+		listpart/"PARTS"
+	endif
+	if/[key == "d"]
+		set/"ans",""
+		while/[ans != "y"] and [ans != "y"] and [ans != "N"] and [ans != "n"]
+			read/"Are you sure? (Y/N)","ans"
+		endloop
+		if/[ans == "Y"] or [ans == "y"]
+			rmpart/selected
+		endif
+		listpart/"PARTS"
+		set/"selected",1
+	endif
+	page5
+endloop
+continue/"install.smc"
