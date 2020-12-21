@@ -194,13 +194,15 @@ repeat/10
 	logo/i
 	wait/0.0075
 endloop
-wait/2
+wait/1
 // Get build info
 warp
 	getfile/"/build.txt"/"buildfile"
 	getitem/"buildfile",1/"build"
 	getitem/"buildfile",2/"release"
 endwarp
+// Fix current directory
+cd/"/install"
 // Installer
 bgcolor/"021082143"
 page1
@@ -405,7 +407,7 @@ endif
 // Partition selection
 wait/0.5
 setlist/"mountpoints"
-getlength/"PARTS"/"len"
+getlistlength/"PARTS"/"len"
 set/"i",0
 repeat/len
 	calc/"i=i+1"
@@ -416,7 +418,7 @@ while/[key != "enter"] or [root == 0]
 	warp
 		getkey/"keys"
 		getitem/"keys",1/"key"
-		getlength/"PARTS"/"len"
+		getlistlength/"PARTS"/"len"
 		if/[key == "down arrow"]
 			if/[selected < len]
 				calc/"selected=selected+1"
@@ -428,9 +430,7 @@ while/[key != "enter"] or [root == 0]
 		endif
 	endwarp
 	if/[key == "r"]
-		clear
-		wait/2
-		getlength/"PARTS"/"len"
+		getlistlength/"PARTS"/"len"
 		set/"i",0
 		repeat/len
 			calc/"i=i+1"
@@ -442,9 +442,7 @@ while/[key != "enter"] or [root == 0]
 		replace/selected,"/"/"mountpoints"
 	endif
 	if/[key == "b"]
-		clear
-		wait/2
-		getlength/"PARTS"/"len"
+		getlistlength/"PARTS"/"len"
 		set/"i",0
 		repeat/len
 			calc/"i=i+1"
@@ -456,13 +454,11 @@ while/[key != "enter"] or [root == 0]
 		replace/selected,"/boot"/"mountpoints"
 	endif
 	if/[key == "esc"]
-		clear
-		wait/2
 		replace/selected,""/"mountpoints"
 	endif
 	if/[key == "c"]
 		read/"Mount point: ","point"
-		getlength/"PARTS"/"len"
+		getlistlength/"PARTS"/"len"
 		set/"i",0
 		repeat/len
 			calc/"i=i+1"
@@ -478,6 +474,7 @@ while/[key != "enter"] or [root == 0]
 		read/"Partition label: ","partname"/"Partition size (in bytes): ","partsize"
 		createpart/partname,partsize
 		listpart/"PARTS"
+		append/""/"mountpoints"
 	endif
 	if/[key == "d"]
 		set/"ans",""
@@ -486,6 +483,7 @@ while/[key != "enter"] or [root == 0]
 		endloop
 		if/[ans == "Y"] or [ans == "y"]
 			rmpart/selected
+			deleteitem/selected/"mountpoints"
 		endif
 		listpart/"PARTS"
 		set/"selected",1
