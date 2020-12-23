@@ -131,9 +131,9 @@ define/"page5"
 {
 	warp
 		// Page 5
-		// Disk menu
+		// Partition manager
 		clear
-		print/"Mount a partition on /",\n,"R - mount selected partition at / (root)",\n,"B - to mount selected partition at /boot",\n,"C - mount selected partition at custom path",\n,"Esc - remove mount point of selected partition",\n,"N - create a partition",\n,"D - delete selected partition",\n
+		print/"Choose a partition for the installation.",\n,"N - create a partition",\n,"D - delete selected partition",\n
 		set/"i",0
 		getlistlength/"PARTS"/"len"
 		repeat/len
@@ -145,18 +145,8 @@ define/"page5"
 			endif
 			getitem/"PARTS",i/"PART"
 			getitem/"mountpoints",i/"mountpoint"
-			print/PART
-			if/[mountpoint != ""]
-				print/" - mounted at ",mountpoint
-			endif
-			if/[mountpoint == "/"]
-				set/"root",1
-			endif
-			print/\n
+			print/PART,\n
 		endloop
-		if/[root == 1]
-			print/\n,"Press ENTER to continue...",\n
-		endif
 	endwarp
 }
 // Short boot animation
@@ -414,7 +404,7 @@ repeat/len
 	append/""/"mountpoints"
 endloop
 set/"key",""/"selected",1/"root",0
-while/[key != "enter"] or [root == 0]
+while/[key != "enter"]
 	warp
 		getkey/"keys"
 		getitem/"keys",1/"key"
@@ -429,47 +419,49 @@ while/[key != "enter"] or [root == 0]
 			endif
 		endif
 	endwarp
-	if/[key == "r"]
-		getlistlength/"PARTS"/"len"
-		set/"i",0
-		repeat/len
-			calc/"i=i+1"
-			getitem/"mountpoints",i/"mountpoint"
-			if/[mountpoint == "/"]
-				replace/i,""/"mountpoints"
-			endif
-		endloop
-		replace/selected,"/"/"mountpoints"
-	endif
-	if/[key == "b"]
-		getlistlength/"PARTS"/"len"
-		set/"i",0
-		repeat/len
-			calc/"i=i+1"
-			getitem/"mountpoints",i/"mountpoint"
-			if/[mountpoint == "/boot"]
-				replace/i,""/"mountpoints"
-			endif
-		endloop
-		replace/selected,"/boot"/"mountpoints"
-	endif
-	if/[key == "esc"]
-		replace/selected,""/"mountpoints"
-	endif
-	if/[key == "c"]
-		read/"Mount point: ","point"
-		getlistlength/"PARTS"/"len"
-		set/"i",0
-		repeat/len
-			calc/"i=i+1"
-			getitem/"mountpoints",i/"mountpoint"
-			if/[mountpoint == point]
-				replace/i,""/"mountpoints"
-			endif
-		endloop
-		replace/selected,point/"mountpoints"
-		set/"selected",1
-	endif
+	// Mounting is coming soon!
+	//
+	//if/[key == "r"]
+	//	getlistlength/"PARTS"/"len"
+	//	set/"i",0
+	//	repeat/len
+	//		calc/"i=i+1"
+	//		getitem/"mountpoints",i/"mountpoint"
+	//		if/[mountpoint == "/"]
+	//			replace/i,""/"mountpoints"
+	//		endif
+	//	endloop
+	//	replace/selected,"/"/"mountpoints"
+	//endif
+	//if/[key == "b"]
+	//	getlistlength/"PARTS"/"len"
+	//	set/"i",0
+	//	repeat/len
+	//		calc/"i=i+1"
+	//		getitem/"mountpoints",i/"mountpoint"
+	//		if/[mountpoint == "/boot"]
+	//			replace/i,""/"mountpoints"
+	//		endif
+	//	endloop
+	//	replace/selected,"/boot"/"mountpoints"
+	//endif
+	//if/[key == "esc"]
+	//	replace/selected,""/"mountpoints"
+	//endif
+	//if/[key == "c"]
+	//	read/"Mount point: ","point"
+	//	getlistlength/"PARTS"/"len"
+	//	set/"i",0
+	//	repeat/len
+	//		calc/"i=i+1"
+	//		getitem/"mountpoints",i/"mountpoint"
+	//		if/[mountpoint == point]
+	//			replace/i,""/"mountpoints"
+	//		endif
+	//	endloop
+	//	replace/selected,point/"mountpoints"
+	//	set/"selected",1
+	//endif
 	if/[key == "n"]
 		read/"Partition label: ","partname"/"Partition size (in bytes): ","partsize"
 		createpart/partname,partsize
@@ -490,4 +482,5 @@ while/[key != "enter"] or [root == 0]
 	endif
 	page5
 endloop
+replace/selected,"/"/"mountpoints"
 continue/"install.smc"
